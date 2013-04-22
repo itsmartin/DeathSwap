@@ -1,3 +1,19 @@
 name: DeathSwap
 main: com.martinbrook.DeathSwap.DeathSwap
 version: 0.1
+commands:
+ join:
+  description: Join the match
+  usage: /join
+ leave:
+  description: Leave the match
+  usage: /leave
+ swap:
+  description: Swap players now - for testing only!
+  usage: /swap
+ ready:
+  description: Set yourself as ready, so that the match can begin
+  usage: /ready
+ ds:
+  description: Other DeathSwap options - type /ds for info
+  usage: /ds
