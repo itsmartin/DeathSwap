@@ -13,8 +13,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 
 public class DeathSwap extends JavaPlugin {
@@ -90,9 +88,7 @@ public class DeathSwap extends JavaPlugin {
 	private String cDsReset() {
 		// Teleports all players to spawn, aborts the current match.
 		
-		for (DeathSwapPlayer p : allPlayers.values()) {
-			server.getPlayer(p.getName()).teleport(spawn);
-		}
+		for (DeathSwapPlayer dp : allPlayers.values()) dp.teleport(spawn);
 		resetMatch();
 
 		broadcast(ChatColor.GOLD + "DeathSwap has been reset.");
@@ -147,7 +143,7 @@ public class DeathSwap extends JavaPlugin {
 		
 		if (allPlayers.size() >= NUMBER_OF_PLAYERS) return ChatColor.RED + "Unable to join - the match is already full!";
 		
-		DeathSwapPlayer dp = new DeathSwapPlayer(sender.getName());
+		DeathSwapPlayer dp = new DeathSwapPlayer(sender.getName(), this);
 		allPlayers.put(sender.getName().toLowerCase(), dp);
 		survivors.add(dp);
 		return ChatColor.GREEN + "You have joined the match! Type /ready when ready to begin.";
@@ -175,21 +171,18 @@ public class DeathSwap extends JavaPlugin {
 	}
 
 	private void doPlayerSwap() {
-		Player p1 = server.getPlayer(survivors.get(0).getName());
-		Player p2 = server.getPlayer(survivors.get(1).getName());
+		for (int i = 0; i < survivors.size(); i++) {
+			if (!survivors.get(i).isOnline()) {
+				broadcast(ChatColor.RED + "Unable to swap - " + survivors.get(i).getName() + " is offline");
+				return;
+			}
+		}
+		Player p1 = survivors.get(0).getPlayer();
+		Player p2 = survivors.get(1).getPlayer();
 		
-		if (p1 == null || !p1.isOnline()) {
-			broadcast(ChatColor.RED + "Unable to swap - " + p1.getName() + " is offline");
-			return;
-		}
-		if (p2 == null || !p2.isOnline()) {
-			broadcast(ChatColor.RED + "Unable to swap - " + p2.getName() + " is offline");
-			return;
-		}
-
 		Location l1 = p1.getLocation();
 		Location l2 = p2.getLocation();
-		giveResistanceEffect(SWAP_RESISTANCE_DURATION);
+		for (DeathSwapPlayer dp : survivors) dp.giveResistance(SWAP_RESISTANCE_DURATION);
 		
 		p1.teleport(l2);
 		p2.teleport(l1);
@@ -200,7 +193,11 @@ public class DeathSwap extends JavaPlugin {
 		startMatchTimer();
 		startSwapTimer();
 		matchRunning = true;
-		giveResistanceEffect(INITIAL_RESISTANCE_DURATION);
+		for (DeathSwapPlayer dp : survivors) {
+			dp.renew();
+			dp.giveResistance(INITIAL_RESISTANCE_DURATION);
+		}
+		server.getWorlds().get(0).setTime(0);
 		launchPlayers();
 		broadcast(ChatColor.AQUA + "GO!");
 	}
@@ -211,25 +208,12 @@ public class DeathSwap extends JavaPlugin {
 				
 		for (int i = 0; i < playerCount; i++) {
 			DeathSwapPlayer dp = survivors.get(i);
-			Player p = server.getPlayer(dp.getName());
-			if (p != null && p.isOnline()) {
+			if (dp.isOnline()) {
 				// Ensure chunk is loaded
 				startPoints.get(i).getChunk().load();
-				p.teleport(startPoints.get(i));
+				dp.teleport(startPoints.get(i));
 			}
 		}
-	}
-
-
-
-	private void giveResistanceEffect(int i) {
-		for (DeathSwapPlayer dp : survivors) {
-			Player p = server.getPlayer(dp.getName());
-			if (p != null) {
-				p.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, i * 20, 10));
-			}
-		}
-		
 	}
 
 
