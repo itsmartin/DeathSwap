@@ -7,6 +7,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent.RegainReason;
+import org.bukkit.event.player.PlayerJoinEvent;
 
 
 public class DeathSwapListener implements Listener {
@@ -54,5 +55,11 @@ public class DeathSwapListener implements Listener {
 		}
 		
 	}
+	
+	@EventHandler
+	public void onJoin(PlayerJoinEvent e) {
+		plugin.setPlayerVisibility(e.getPlayer());
+	}
+
 	
 }

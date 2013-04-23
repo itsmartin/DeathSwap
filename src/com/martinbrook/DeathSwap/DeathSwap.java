@@ -199,6 +199,7 @@ public class DeathSwap extends JavaPlugin {
 		}
 		server.getWorlds().get(0).setTime(0);
 		launchPlayers();
+		setPlayerVisibility();
 		broadcast(ChatColor.AQUA + "GO!");
 	}
 	
@@ -291,6 +292,7 @@ public class DeathSwap extends JavaPlugin {
 	public void handlePlayerDeath(DeathSwapPlayer dp) {
 		dp.setDead();
 		survivors.remove(dp);
+		setPlayerVisibility(dp.getPlayer()); // Make them a spectator
 		if (survivors.size() == 1) {
 			handleVictory(getDeathSwapPlayer(survivors.get(0).getName()));
 		}
@@ -319,6 +321,7 @@ public class DeathSwap extends JavaPlugin {
 		stopMatchTimer();
 		stopSwapTimer();
 		stopMatchCountdown();
+		setPlayerVisibility();
 		
 	}
 
@@ -326,5 +329,33 @@ public class DeathSwap extends JavaPlugin {
 	public boolean uhcEnabled() {
 		return uhcMode;
 	}
+	
+	/**
+	 * Set the correct vanish status for all players on the server
+	 */
+	public void setPlayerVisibility() {
+		for(Player p : server.getOnlinePlayers()) setPlayerVisibility(p);
+	}
+	
+	public void setPlayerVisibility(Player viewed) {
+		DeathSwapPlayer viewedDp = this.getDeathSwapPlayer(viewed);
+		boolean viewedIsSpectator = (!matchInProgress() || viewedDp == null || !viewedDp.isAlive());
+		
+		MatchUtils.setAffectsSpawning(viewed, !viewedIsSpectator);
+		MatchUtils.setCollidesWithEntities(viewed, !viewedIsSpectator);
 
+		for (Player viewer : server.getOnlinePlayers()) {
+			DeathSwapPlayer dp = this.getDeathSwapPlayer(viewer);
+
+			// Figure out if viewer is a spectator
+			if (!matchInProgress() || dp == null || !dp.isAlive()) {
+				// Viewer is a spectator; they can see the player.
+				viewer.showPlayer(viewed);
+			} else {
+				// Viewer is a player; they can only see other players.
+				if (viewedIsSpectator) viewer.hidePlayer(viewed);
+				else viewer.showPlayer(viewed);
+			}
+		}
+	}
 }
