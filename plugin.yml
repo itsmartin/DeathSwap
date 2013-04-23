@@ -1,6 +1,6 @@
 name: DeathSwap
 main: com.martinbrook.DeathSwap.DeathSwap
-version: 0.1
+version: 0.2
 commands:
  join:
   description: Join the match
