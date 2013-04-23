@@ -56,8 +56,6 @@ public class DeathSwap extends JavaPlugin {
 			response = cJoin((Player) sender);
 		} else if (c.equals("leave") && sender instanceof Player) {
 			response = cLeave((Player) sender);
-		} else if (c.equals("swap")) {
-			response = cSwap();
 		} else if (c.equals("ready") && sender instanceof Player) {
 			response = cReady((Player) sender);
 		} else if (c.equals("ds")) {
@@ -128,12 +126,6 @@ public class DeathSwap extends JavaPlugin {
 
 		matchCountdown.cancel();
 		matchCountdown = null;
-	}
-
-	private String cSwap() {
-		// TODO remove this command later, it's only here for testing!
-		swapPlayers();
-		return null;
 	}
 
 

@@ -8,9 +8,6 @@ commands:
  leave:
   description: Leave the match
   usage: /leave
- swap:
-  description: Swap players now - for testing only!
-  usage: /swap
  ready:
   description: Set yourself as ready, so that the match can begin
   usage: /ready
