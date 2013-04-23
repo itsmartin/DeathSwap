@@ -26,8 +26,9 @@ public class DeathSwap extends JavaPlugin {
 	private int readyCount = 0;
 	private int matchTimer = -1;
 	private int swapTimer = -1;
-	private static int MINIMUM_SWAP_TIME = 20;
-	private static int MAXIMUM_SWAP_TIME = 120;
+	private static int MINIMUM_SWAP_TIME = 22;
+	private static int SWAP_CHECK_TIME = 6;
+	private static int SWAP_PROBABILITY = 14;
 	private static int NUMBER_OF_PLAYERS = 2;
 	private MatchCountdown matchCountdown;
 	private static int COUNTDOWN_DURATION = 15;
@@ -219,18 +220,28 @@ public class DeathSwap extends JavaPlugin {
 
 
 	private void startSwapTimer() {
-		Random r = new Random();
-		long delay = MINIMUM_SWAP_TIME * 20 + r.nextInt((MAXIMUM_SWAP_TIME-MINIMUM_SWAP_TIME)*20);
-		
-		
 		swapTimer = server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
 			public void run() {
-				swapPlayers();
+				checkForSwap();
 			}
-		}, delay);
+		}, MINIMUM_SWAP_TIME * 20);
+		
 		
 		
 	}
+	private void checkForSwap() {
+		Random r = new Random();
+		if (r.nextInt(100) < SWAP_PROBABILITY) {
+			swapPlayers();
+		} else {
+			swapTimer = server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+				public void run() {
+					checkForSwap();
+				}
+			}, SWAP_CHECK_TIME * 20);
+		}
+	}
+	
 	private void stopSwapTimer() {
 		if (swapTimer != -1) {
 			server.getScheduler().cancelTask(swapTimer);
