@@ -134,12 +134,13 @@ public class DeathSwap extends JavaPlugin {
 
 
 	private String cLeave(Player sender) {
-		if (getDeathSwapPlayer(sender) == null) return ChatColor.RED + "Unable to leave - you have not joined this match!";
+		DeathSwapPlayer dp = getDeathSwapPlayer(sender);
+		if (dp == null) return ChatColor.RED + "Unable to leave - you have not joined this match!";
 		
 		if (matchRunning) return ChatColor.RED + "Unable to leave - the match has already started!";
 		
 		allPlayers.remove(sender.getName().toLowerCase());
-		survivors.remove(sender.getName());
+		survivors.remove(dp);
 		return ChatColor.GREEN + "You have left the match!";
 		
 	}
@@ -314,8 +315,9 @@ public class DeathSwap extends JavaPlugin {
 
 
 	public void handlePlayerDeath(DeathSwapPlayer dp) {
+		System.out.print("Handling the death of " + dp.getName());
 		dp.setDead();
-		survivors.remove(dp.getName());
+		survivors.remove(dp);
 		if (survivors.size() == 1) {
 			handleVictory(getDeathSwapPlayer(survivors.get(0).getName()));
 		}
