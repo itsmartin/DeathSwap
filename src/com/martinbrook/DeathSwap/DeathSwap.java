@@ -313,7 +313,6 @@ public class DeathSwap extends JavaPlugin {
 
 
 	public void handlePlayerDeath(DeathSwapPlayer dp) {
-		System.out.print("Handling the death of " + dp.getName());
 		dp.setDead();
 		survivors.remove(dp);
 		if (survivors.size() == 1) {
