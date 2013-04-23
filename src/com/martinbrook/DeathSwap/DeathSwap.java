@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.Random;
 
 import org.bukkit.ChatColor;
-import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
@@ -38,6 +37,7 @@ public class DeathSwap extends JavaPlugin {
 	private static int SWAP_RESISTANCE_DURATION = 5;
 	private boolean uhcMode = false;
 	private static int START_RADIUS = 1000;
+	ArrayList<Location> startPoints;
 	
     @Override
     public void onEnable(){
@@ -116,6 +116,11 @@ public class DeathSwap extends JavaPlugin {
 
 	private void startMatchCountdown() {
 		matchCountdown = new MatchCountdown(COUNTDOWN_DURATION, this);
+		broadcast(ChatColor.GRAY + "Generating chunks, prepare for possible lag...");
+		World w = server.getWorlds().get(0);
+		int playerCount = survivors.size();
+		startPoints = MatchUtils.calculateRadialStarts(w, playerCount, START_RADIUS);
+		 
 	}
 	
 	private void stopMatchCountdown() {
@@ -210,23 +215,16 @@ public class DeathSwap extends JavaPlugin {
 	
 	
 	private void launchPlayers() {
-		World w = server.getWorlds().get(0);
 		int playerCount = survivors.size();
-		
-		ArrayList<Location> startPoints = MatchUtils.calculateRadialStarts(w, playerCount, START_RADIUS);
-		broadcast(ChatColor.AQUA + "Generating chunks, prepare for possible lag...");
-		for(Location l : startPoints) {
-			// Ensure the chunk is loaded
-			Chunk chunk = w.getChunkAt(l);
-			if (!w.isChunkLoaded(chunk))
-				w.loadChunk(chunk);
-		}
-		
+				
 		for (int i = 0; i < playerCount; i++) {
 			DeathSwapPlayer dp = survivors.get(i);
 			Player p = server.getPlayer(dp.getName());
-			if (p != null && p.isOnline())
+			if (p != null && p.isOnline()) {
+				// Ensure chunk is loaded
+				startPoints.get(i).getChunk().load();
 				p.teleport(startPoints.get(i));
+			}
 		}
 	}
 

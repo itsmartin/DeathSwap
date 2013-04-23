@@ -174,6 +174,16 @@ public class MatchUtils {
 			int x = (int) (radius * Math.cos(i*arc));
 			int z = (int) (radius * Math.sin(i*arc));
 			
+			// Load chunks around this location
+			for (int x1 = x - 160; x1 <= x+160; x1 += 16) {
+				for (int z1 = z - 160; z1 <= z + 160; z1 += 16) {
+					// Load the chunk
+					world.loadChunk(x1, z1, true);
+					// Send the chunk to players
+					world.refreshChunk(x1, z1);
+				}
+			}
+			
 			int y = world.getHighestBlockYAt(x, z);
 			locations.add(new Location(world,x,y,z));
 		}
