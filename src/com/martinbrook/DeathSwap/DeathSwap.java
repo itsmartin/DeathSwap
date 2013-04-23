@@ -65,6 +65,12 @@ public class DeathSwap extends JavaPlugin {
 		return true;
     }
 
+	/**
+	 * Handle the /ds command
+	 * 
+	 * @param args The command arguments
+	 * @return Response to be sent back to the sender
+	 */
 	private String cDs(String[] args) {
 		if (args.length < 1) return ChatColor.GRAY + "/ds command options:\n" +
 				"  /ds reset   - Abort the current match and teleport players back to spawn\n" +
@@ -83,6 +89,11 @@ public class DeathSwap extends JavaPlugin {
 		return ChatColor.RED + "/ds command not understood. Type /ds for options.";
 	}
 
+	/**
+	 * Handle the /ds reset command
+	 * 
+	 * @return Response to be sent back to the sender
+	 */
 	private String cDsReset() {
 		// Teleports all players to spawn, aborts the current match.
 		
@@ -93,29 +104,28 @@ public class DeathSwap extends JavaPlugin {
 		return null;
 	}
 
-	private String cReady(Player sender) {
-		DeathSwapPlayer p = getDeathSwapPlayer(sender);
+	/**
+	 * Handle the /join command
+	 * 
+	 * @param sender The player who wants to join
+	 * @return Response to be sent back to the sender
+	 */
+	private String cJoin(Player sender) {
+		if (getDeathSwapPlayer(sender) != null) return ChatColor.RED + "You have already joined this match! Type /ready when ready to begin.";
 		
-		if (p == null) return ChatColor.RED + "You have not joined this match! Type /join to join.";
-		if (p.isReady()) return ChatColor.RED + "You are already marked as ready!";
-
-		p.setReady();
-		broadcast(ChatColor.GREEN + sender.getDisplayName() + " is ready!");
-		readyCount++;
-		if (readyCount == allPlayers.size()) startMatchCountdown();
-		return null;
-	}
-
-	private void startMatchCountdown() {
-		matchCountdown = new MatchCountdown(COUNTDOWN_DURATION, this);
-		broadcast(ChatColor.GRAY + "Generating chunks, prepare for possible lag...");
-		World w = server.getWorlds().get(0);
-		int playerCount = survivors.size();
-		startPoints = MatchUtils.calculateRadialStarts(w, playerCount, START_RADIUS);
-		
-		 
+		if (matchInProgress() || matchCountdown != null) return ChatColor.RED + "Unable to join, the match has already started!";
+		DeathSwapPlayer dp = new DeathSwapPlayer(sender.getName(), this);
+		allPlayers.put(sender.getName().toLowerCase(), dp);
+		survivors.add(dp);
+		return ChatColor.GREEN + "You have joined the match! Type /ready when ready to begin.";
 	}
 	
+	/**
+	 * Handle the /leave command
+	 * 
+	 * @param sender The player who wants to leave
+	 * @return Response to be sent back to the sender
+	 */
 	private String cLeave(Player sender) {
 		DeathSwapPlayer dp = getDeathSwapPlayer(sender);
 		if (dp == null) return ChatColor.RED + "Unable to leave - you have not joined this match!";
@@ -128,30 +138,143 @@ public class DeathSwap extends JavaPlugin {
 		
 	}
 
-	private String cJoin(Player sender) {
-		if (getDeathSwapPlayer(sender) != null) return ChatColor.RED + "You have already joined this match! Type /ready when ready to begin.";
+
+	/**
+	 * Handle the /ready command
+	 * 
+	 * @param sender The player who is ready
+	 * @return Response to be sent back to the sender
+	 */
+	private String cReady(Player sender) {
+		DeathSwapPlayer p = getDeathSwapPlayer(sender);
 		
-		if (matchInProgress() || matchCountdown != null) return ChatColor.RED + "Unable to join, the match has already started!";
-		DeathSwapPlayer dp = new DeathSwapPlayer(sender.getName(), this);
-		allPlayers.put(sender.getName().toLowerCase(), dp);
-		survivors.add(dp);
-		return ChatColor.GREEN + "You have joined the match! Type /ready when ready to begin.";
-	}
+		if (p == null) return ChatColor.RED + "You have not joined this match! Type /join to join.";
+		if (p.isReady()) return ChatColor.RED + "You are already marked as ready!";
 	
+		p.setReady();
+		broadcast(ChatColor.GREEN + sender.getDisplayName() + " is ready!");
+		readyCount++;
+		if (readyCount == allPlayers.size()) startMatchCountdown();
+		return null;
+	}
+
+
+	/**
+	 * Pregenerate chunks and begin the match countdown
+	 */
+	private void startMatchCountdown() {
+		matchCountdown = new MatchCountdown(COUNTDOWN_DURATION, this);
+		broadcast(ChatColor.GRAY + "Generating chunks, prepare for possible lag...");
+		World w = server.getWorlds().get(0);
+		int playerCount = survivors.size();
+		startPoints = MatchUtils.calculateRadialStarts(w, playerCount, START_RADIUS);
+		
+		 
+	}
+
+
+	/**
+	 * Start the match, teleport players, and vanish spectators
+	 */
+	protected void startMatch() {
+		matchCountdown = null;
+		startMatchTimer();
+		startSwapTimer();
+		matchRunning = true;
+		for (DeathSwapPlayer dp : survivors) {
+			dp.renew();
+			dp.giveResistance(INITIAL_RESISTANCE_DURATION);
+		}
+		server.getWorlds().get(0).setTime(0);
+		launchPlayers();
+		setPlayerVisibility();
+		broadcast(ChatColor.AQUA + "GO!");
+	}
+
+
+	/**
+	 * Teleport players to their start points, ensuring chunks are loaded
+	 */
+	private void launchPlayers() {
+		int playerCount = survivors.size();
+				
+		for (int i = 0; i < playerCount; i++) {
+			DeathSwapPlayer dp = survivors.get(i);
+			if (dp.isOnline()) {
+				// Ensure chunk is loaded
+				startPoints.get(i).getChunk().load();
+				dp.teleport(startPoints.get(i));
+			}
+		}
+	}
+
+
+	/**
+	 * Broadcast a message to all online players
+	 * 
+	 * @param message The message to be sent
+	 */
 	public void broadcast(String message) {
 		server.broadcastMessage(message);
 	}
 	
+	/**
+	 * Look up a player by Player object
+	 * 
+	 * @param p The Player object
+	 * @return The player, or null if not found
+	 */
 	public DeathSwapPlayer getDeathSwapPlayer(Player p) {
 		return getDeathSwapPlayer(p.getName());
 	}
 	
+	/**
+	 * Look up a player by name, case insensitive
+	 * 
+	 * @param name The name
+	 * @return The player, or null if not found
+	 */
 	public DeathSwapPlayer getDeathSwapPlayer(String name) {
 		return allPlayers.get(name.toLowerCase());
 	}
 
 
-	public void swapPlayers() {
+	/**
+	 * Start a timer to swap players
+	 */
+	private void startSwapTimer() {
+		server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+			public void run() {
+				checkForSwap();
+			}
+		}, MINIMUM_SWAP_TIME * 20);
+		
+		
+		
+	}
+
+
+	/**
+	 * Periodic check for player swap, according to the defined probability
+	 */
+	private void checkForSwap() {
+		Random r = new Random();
+		if (r.nextInt(100) < SWAP_PROBABILITY) {
+			swapPlayers();
+		} else {
+			server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+				public void run() {
+					checkForSwap();
+				}
+			}, SWAP_CHECK_TIME * 20);
+		}
+	}
+
+
+	/**
+	 * Initiate the player swap and set a timer for the next one.
+	 */
+	private void swapPlayers() {
 		broadcast(ChatColor.GOLD + "Swapping now!");
 		doPlayerSwap();
 		
@@ -159,6 +282,9 @@ public class DeathSwap extends JavaPlugin {
 		
 	}
 
+	/**
+	 * Carry out the player swap, teleporting all online surviving players
+	 */
 	private void doPlayerSwap() {
 		ArrayList<DeathSwapPlayer> players = new ArrayList<DeathSwapPlayer>();
 		ArrayList<Location> locations = new ArrayList<Location>();
@@ -182,59 +308,6 @@ public class DeathSwap extends JavaPlugin {
 	}
 
 
-	public void startMatch() {
-		matchCountdown = null;
-		startMatchTimer();
-		startSwapTimer();
-		matchRunning = true;
-		for (DeathSwapPlayer dp : survivors) {
-			dp.renew();
-			dp.giveResistance(INITIAL_RESISTANCE_DURATION);
-		}
-		server.getWorlds().get(0).setTime(0);
-		launchPlayers();
-		setPlayerVisibility();
-		broadcast(ChatColor.AQUA + "GO!");
-	}
-	
-	
-	private void launchPlayers() {
-		int playerCount = survivors.size();
-				
-		for (int i = 0; i < playerCount; i++) {
-			DeathSwapPlayer dp = survivors.get(i);
-			if (dp.isOnline()) {
-				// Ensure chunk is loaded
-				startPoints.get(i).getChunk().load();
-				dp.teleport(startPoints.get(i));
-			}
-		}
-	}
-
-
-	private void startSwapTimer() {
-		server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
-			public void run() {
-				checkForSwap();
-			}
-		}, MINIMUM_SWAP_TIME * 20);
-		
-		
-		
-	}
-	private void checkForSwap() {
-		Random r = new Random();
-		if (r.nextInt(100) < SWAP_PROBABILITY) {
-			swapPlayers();
-		} else {
-			server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
-				public void run() {
-					checkForSwap();
-				}
-			}, SWAP_CHECK_TIME * 20);
-		}
-	}
-	
 	/**
 	 * Starts the match timer
 	 */
@@ -263,7 +336,7 @@ public class DeathSwap extends JavaPlugin {
 	 * @param precise Whether to give a precise time (00:00:00) instead of (xx minutes)
 	 * @return Current match time as a nicely-formatted string
 	 */
-	public String matchTimeAnnouncement(boolean precise) {
+	private String matchTimeAnnouncement(boolean precise) {
 		if (this.matchRunning == false)
 			return ChatColor.AQUA + "Match time: " + ChatColor.GOLD + MatchUtils.formatDuration(0, precise);
 		else
@@ -272,12 +345,12 @@ public class DeathSwap extends JavaPlugin {
 	}
 
 
-	public boolean matchInProgress() {
-		return matchRunning;
-	}
-
-
-	public void handlePlayerDeath(DeathSwapPlayer dp) {
+	/**
+	 * Process the death of a player in the match
+	 * 
+	 * @param dp The player who died
+	 */
+	protected void handlePlayerDeath(DeathSwapPlayer dp) {
 		dp.setDead();
 		survivors.remove(dp);
 		setPlayerVisibility(dp.getPlayer()); // Make them a spectator
@@ -288,17 +361,22 @@ public class DeathSwap extends JavaPlugin {
 	}
 
 
+	/**
+	 * Called when all players but one have been eliminated
+	 * 
+	 * @param winner The winning player
+	 */
 	private void handleVictory(DeathSwapPlayer winner) {
 		broadcast(ChatColor.AQUA + winner.getName() + " is the winner!");
 		broadcast(matchTimeAnnouncement(true));
 		
 		resetMatch();
-		
-		
-		
 	}
 
 
+	/**
+	 * Reset all match parameters to default settings, and end the match in progress
+	 */
 	private void resetMatch() {
 		allPlayers.clear();
 		survivors.clear();
@@ -314,10 +392,6 @@ public class DeathSwap extends JavaPlugin {
 	}
 
 
-	public boolean uhcEnabled() {
-		return uhcMode;
-	}
-	
 	/**
 	 * Set the correct vanish status for all players on the server
 	 */
@@ -325,6 +399,11 @@ public class DeathSwap extends JavaPlugin {
 		for(Player p : server.getOnlinePlayers()) setPlayerVisibility(p);
 	}
 	
+	/**
+	 * Set the correct visibility of a specific player on the server
+	 * 
+	 * @param viewed The player whose visibility is to be updated
+	 */
 	public void setPlayerVisibility(Player viewed) {
 		DeathSwapPlayer viewedDp = this.getDeathSwapPlayer(viewed);
 		boolean viewedIsSpectator = (!matchInProgress() || viewedDp == null || !viewedDp.isAlive());
@@ -345,5 +424,21 @@ public class DeathSwap extends JavaPlugin {
 				else viewer.showPlayer(viewed);
 			}
 		}
+	}
+
+
+	/**
+	 * @return Whether a match is currently in progress
+	 */
+	public boolean matchInProgress() {
+		return matchRunning;
+	}
+
+
+	/**
+	 * @return Whether UHC mode is currently active
+	 */
+	public boolean uhcEnabled() {
+		return uhcMode;
 	}
 }
