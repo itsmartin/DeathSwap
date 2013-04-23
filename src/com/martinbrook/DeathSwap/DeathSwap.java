@@ -33,7 +33,7 @@ public class DeathSwap extends JavaPlugin {
 	private static int NUMBER_OF_PLAYERS = 2;
 	private MatchCountdown matchCountdown;
 	private static int COUNTDOWN_DURATION = 15;
-	private static int INITIAL_RESISTANCE_DURATION = 30;
+	private static int INITIAL_RESISTANCE_DURATION = 10;
 	private static int SWAP_RESISTANCE_DURATION = 5;
 	private boolean uhcMode = false;
 	private static int START_RADIUS = 1000;
