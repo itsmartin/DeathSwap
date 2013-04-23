@@ -24,13 +24,10 @@ public class DeathSwap extends JavaPlugin {
 	private boolean matchRunning = false;
 	private Calendar matchStartTime;
 	private int readyCount = 0;
-	private int matchTimer = -1;
-	private int swapTimer = -1;
 	private static int MINIMUM_SWAP_TIME = 22;
 	private static int SWAP_CHECK_TIME = 6;
 	private static int SWAP_PROBABILITY = 14;
 	private static int NUMBER_OF_PLAYERS = 2;
-	private MatchCountdown matchCountdown;
 	private static int COUNTDOWN_DURATION = 15;
 	private static int INITIAL_RESISTANCE_DURATION = 10;
 	private static int SWAP_RESISTANCE_DURATION = 5;
@@ -110,7 +107,7 @@ public class DeathSwap extends JavaPlugin {
 	}
 
 	private void startMatchCountdown() {
-		matchCountdown = new MatchCountdown(COUNTDOWN_DURATION, this);
+		new MatchCountdown(COUNTDOWN_DURATION, this);
 		broadcast(ChatColor.GRAY + "Generating chunks, prepare for possible lag...");
 		World w = server.getWorlds().get(0);
 		int playerCount = survivors.size();
@@ -118,15 +115,6 @@ public class DeathSwap extends JavaPlugin {
 		 
 	}
 	
-	private void stopMatchCountdown() {
-		if (matchCountdown == null) return;
-
-		matchCountdown.cancel();
-		matchCountdown = null;
-	}
-
-
-
 	private String cLeave(Player sender) {
 		DeathSwapPlayer dp = getDeathSwapPlayer(sender);
 		if (dp == null) return ChatColor.RED + "Unable to leave - you have not joined this match!";
@@ -220,7 +208,7 @@ public class DeathSwap extends JavaPlugin {
 
 
 	private void startSwapTimer() {
-		swapTimer = server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+		server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
 			public void run() {
 				checkForSwap();
 			}
@@ -234,7 +222,7 @@ public class DeathSwap extends JavaPlugin {
 		if (r.nextInt(100) < SWAP_PROBABILITY) {
 			swapPlayers();
 		} else {
-			swapTimer = server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+			server.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
 				public void run() {
 					checkForSwap();
 				}
@@ -242,32 +230,16 @@ public class DeathSwap extends JavaPlugin {
 		}
 	}
 	
-	private void stopSwapTimer() {
-		if (swapTimer != -1) {
-			server.getScheduler().cancelTask(swapTimer);
-		}
-	}
-
-
 	/**
 	 * Starts the match timer
 	 */
 	private void startMatchTimer() {
 		matchStartTime = Calendar.getInstance();
-		matchTimer = server.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
+		server.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
 			public void run() {
 				doMatchProgressAnnouncement();
 			}
 		}, 1200L, 1200L);
-	}
-	
-	/**
-	 * Stops the match timer
-	 */
-	private void stopMatchTimer() {
-		if (matchTimer != -1) {
-			server.getScheduler().cancelTask(matchTimer);
-		}
 	}
 	
 	/**
@@ -328,10 +300,9 @@ public class DeathSwap extends JavaPlugin {
 		
 		matchRunning = false;
 		uhcMode = false;
+		readyCount = 0;
 
-		stopMatchTimer();
-		stopSwapTimer();
-		stopMatchCountdown();
+		server.getScheduler().cancelTasks(this);
 		setPlayerVisibility();
 		
 	}
