@@ -27,13 +27,14 @@ public class DeathSwap extends JavaPlugin {
 	private static int MINIMUM_SWAP_TIME = 22;
 	private static int SWAP_CHECK_TIME = 6;
 	private static int SWAP_PROBABILITY = 14;
-	private static int NUMBER_OF_PLAYERS = 2;
+	private static int MAX_NUMBER_OF_PLAYERS = 2;
 	private static int COUNTDOWN_DURATION = 15;
 	private static int INITIAL_RESISTANCE_DURATION = 10;
 	private static int SWAP_RESISTANCE_DURATION = 5;
 	private boolean uhcMode = false;
 	private static int START_RADIUS = 1000;
 	ArrayList<Location> startPoints;
+	private MatchCountdown matchCountdown = null;
 	
     @Override
     public void onEnable(){
@@ -102,16 +103,17 @@ public class DeathSwap extends JavaPlugin {
 		p.setReady();
 		broadcast(ChatColor.GREEN + sender.getDisplayName() + " is ready!");
 		readyCount++;
-		if (readyCount == NUMBER_OF_PLAYERS) startMatchCountdown();
+		if (readyCount == MAX_NUMBER_OF_PLAYERS) startMatchCountdown();
 		return null;
 	}
 
 	private void startMatchCountdown() {
-		new MatchCountdown(COUNTDOWN_DURATION, this);
+		matchCountdown = new MatchCountdown(COUNTDOWN_DURATION, this);
 		broadcast(ChatColor.GRAY + "Generating chunks, prepare for possible lag...");
 		World w = server.getWorlds().get(0);
 		int playerCount = survivors.size();
 		startPoints = MatchUtils.calculateRadialStarts(w, playerCount, START_RADIUS);
+		
 		 
 	}
 	
@@ -119,7 +121,7 @@ public class DeathSwap extends JavaPlugin {
 		DeathSwapPlayer dp = getDeathSwapPlayer(sender);
 		if (dp == null) return ChatColor.RED + "Unable to leave - you have not joined this match!";
 		
-		if (matchRunning) return ChatColor.RED + "Unable to leave - the match has already started!";
+		if (matchInProgress() || matchCountdown != null) return ChatColor.RED + "Unable to leave - the match has already started!";
 		
 		allPlayers.remove(sender.getName().toLowerCase());
 		survivors.remove(dp);
@@ -130,8 +132,9 @@ public class DeathSwap extends JavaPlugin {
 	private String cJoin(Player sender) {
 		if (getDeathSwapPlayer(sender) != null) return ChatColor.RED + "You have already joined this match! Type /ready when ready to begin.";
 		
-		if (allPlayers.size() >= NUMBER_OF_PLAYERS) return ChatColor.RED + "Unable to join - the match is already full!";
+		if (allPlayers.size() >= MAX_NUMBER_OF_PLAYERS) return ChatColor.RED + "Unable to join - the match is already full!";
 		
+		if (matchInProgress() || matchCountdown != null) return ChatColor.RED + "Unable to join, the match has already started!";
 		DeathSwapPlayer dp = new DeathSwapPlayer(sender.getName(), this);
 		allPlayers.put(sender.getName().toLowerCase(), dp);
 		survivors.add(dp);
@@ -179,6 +182,7 @@ public class DeathSwap extends JavaPlugin {
 
 
 	public void startMatch() {
+		matchCountdown = null;
 		startMatchTimer();
 		startSwapTimer();
 		matchRunning = true;
@@ -302,6 +306,7 @@ public class DeathSwap extends JavaPlugin {
 		uhcMode = false;
 		readyCount = 0;
 
+		matchCountdown = null;
 		server.getScheduler().cancelTasks(this);
 		setPlayerVisibility();
 		
