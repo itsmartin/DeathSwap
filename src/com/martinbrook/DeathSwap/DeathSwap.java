@@ -27,7 +27,6 @@ public class DeathSwap extends JavaPlugin {
 	private static int MINIMUM_SWAP_TIME = 22;
 	private static int SWAP_CHECK_TIME = 6;
 	private static int SWAP_PROBABILITY = 14;
-	private static int MAX_NUMBER_OF_PLAYERS = 2;
 	private static int COUNTDOWN_DURATION = 15;
 	private static int INITIAL_RESISTANCE_DURATION = 10;
 	private static int SWAP_RESISTANCE_DURATION = 5;
@@ -103,7 +102,7 @@ public class DeathSwap extends JavaPlugin {
 		p.setReady();
 		broadcast(ChatColor.GREEN + sender.getDisplayName() + " is ready!");
 		readyCount++;
-		if (readyCount == MAX_NUMBER_OF_PLAYERS) startMatchCountdown();
+		if (readyCount == allPlayers.size()) startMatchCountdown();
 		return null;
 	}
 
@@ -131,8 +130,6 @@ public class DeathSwap extends JavaPlugin {
 
 	private String cJoin(Player sender) {
 		if (getDeathSwapPlayer(sender) != null) return ChatColor.RED + "You have already joined this match! Type /ready when ready to begin.";
-		
-		if (allPlayers.size() >= MAX_NUMBER_OF_PLAYERS) return ChatColor.RED + "Unable to join - the match is already full!";
 		
 		if (matchInProgress() || matchCountdown != null) return ChatColor.RED + "Unable to join, the match has already started!";
 		DeathSwapPlayer dp = new DeathSwapPlayer(sender.getName(), this);
@@ -163,21 +160,25 @@ public class DeathSwap extends JavaPlugin {
 	}
 
 	private void doPlayerSwap() {
-		for (int i = 0; i < survivors.size(); i++) {
-			if (!survivors.get(i).isOnline()) {
-				broadcast(ChatColor.RED + "Unable to swap - " + survivors.get(i).getName() + " is offline");
-				return;
+		ArrayList<DeathSwapPlayer> players = new ArrayList<DeathSwapPlayer>();
+		ArrayList<Location> locations = new ArrayList<Location>();
+		
+		for (DeathSwapPlayer dp : survivors) {
+			if (dp.isOnline()) {
+				players.add(dp);
+				locations.add(dp.getPlayer().getLocation());
 			}
 		}
-		Player p1 = survivors.get(0).getPlayer();
-		Player p2 = survivors.get(1).getPlayer();
 		
-		Location l1 = p1.getLocation();
-		Location l2 = p2.getLocation();
-		for (DeathSwapPlayer dp : survivors) dp.giveResistance(SWAP_RESISTANCE_DURATION);
+		// Cycle locations
+		locations.add(locations.remove(0));
 		
-		p1.teleport(l2);
-		p2.teleport(l1);
+		for(int i = 0; i < players.size(); i++) {
+			DeathSwapPlayer dp = players.get(i);
+			dp.giveResistance(SWAP_RESISTANCE_DURATION);
+			dp.teleport(locations.get(i));
+		}
+
 	}
 
 
